@@ -1,1 +1,5 @@
 *.t7
+*.pt
+__pycache__/
+.venv/
+checkpoints/
