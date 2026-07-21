@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="零基础理解并训练唐及唐以前字符级 RNN 的交互式教程">
+  <title>铸字成诗｜零基础 RNN 训练指南</title>
+  <style>
+    :root {
+      --paper: #f0e7d3;
+      --paper-light: #faf5e9;
+      --ink: #1e2520;
+      --ink-soft: #566056;
+      --cinnabar: #a83225;
+      --cinnabar-dark: #74251d;
+      --jade: #315f52;
+      --gold: #a77a2d;
+      --rule: rgba(30, 37, 32, .19);
+      --shadow: 0 18px 54px rgba(49, 42, 27, .13);
+      --serif: "Noto Serif SC", "Songti SC", STSong, "Times New Roman", serif;
+      --sans: "LXGW WenKai", "Kaiti SC", KaiTi, serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(168, 50, 37, .08), transparent 24rem),
+        radial-gradient(circle at 88% 31%, rgba(49, 95, 82, .10), transparent 30rem),
+        repeating-linear-gradient(0deg, rgba(81, 63, 35, .025) 0, rgba(81, 63, 35, .025) 1px, transparent 1px, transparent 5px),
+        var(--paper);
+      font-family: var(--serif);
+      line-height: 1.78;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .22;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.74' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.17'/%3E%3C/svg%3E");
+      z-index: 50;
+    }
+
+    a { color: inherit; }
+    button, select, input { font: inherit; }
+    ::selection { color: var(--paper-light); background: var(--cinnabar); }
+
+    .reading-progress {
+      position: fixed;
+      inset: 0 auto auto 0;
+      width: 0;
+      height: 4px;
+      background: var(--cinnabar);
+      box-shadow: 0 1px 12px rgba(168, 50, 37, .55);
+      z-index: 100;
+    }
+
+    .rail {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 18rem;
+      padding: 2.2rem 1.4rem;
+      overflow-y: auto;
+      border-right: 1px solid var(--rule);
+      background: rgba(240, 231, 211, .88);
+      backdrop-filter: blur(16px);
+      z-index: 20;
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 3.25rem 1fr;
+      gap: .85rem;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .seal {
+      display: grid;
+      place-items: center;
+      width: 3.15rem;
+      aspect-ratio: 1;
+      color: var(--paper-light);
+      background: var(--cinnabar);
+      border: 2px solid var(--cinnabar-dark);
+      box-shadow: inset 0 0 0 3px rgba(255,255,255,.22);
+      font-family: var(--sans);
+      font-size: 1.05rem;
+      line-height: 1.05;
+      letter-spacing: .08em;
+      text-align: center;
+      transform: rotate(-2deg);
+    }
+
+    .brand strong { display: block; font-size: 1.08rem; letter-spacing: .12em; }
+    .brand small { color: var(--ink-soft); font-family: var(--sans); }
+    .rail-label { margin: 0 0 .65rem; color: var(--cinnabar); font-size: .72rem; letter-spacing: .22em; }
+    .rail nav { display: grid; gap: .18rem; }
+    .rail nav a {
+      display: grid;
+      grid-template-columns: 1.8rem 1fr;
+      align-items: center;
+      padding: .55rem .6rem;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: .2s ease;
+    }
+    .rail nav a span:first-child { color: var(--gold); font-family: var(--mono); font-size: .73rem; }
+    .rail nav a:hover, .rail nav a.active {
+      color: var(--ink);
+      background: rgba(255,255,255,.35);
+      border-left-color: var(--cinnabar);
+      transform: translateX(.18rem);
+    }
+
+    .rail-note {
+      margin-top: 2rem;
+      padding: 1rem;
+      color: var(--ink-soft);
+      background: rgba(49, 95, 82, .07);
+      border: 1px solid rgba(49, 95, 82, .18);
+      font-family: var(--sans);
+      font-size: .84rem;
+    }
+
+    main { margin-left: 18rem; }
+    .hero {
+      position: relative;
+      min-height: 92vh;
+      display: grid;
+      align-items: center;
+      padding: 6rem clamp(2rem, 7vw, 8rem) 5rem;
+      overflow: hidden;
+      border-bottom: 1px solid var(--rule);
+    }
+    .hero::after {
+      content: "學";
+      position: absolute;
+      right: 3vw;
+      bottom: -12rem;
+      color: rgba(30, 37, 32, .035);
+      font-size: min(48vw, 40rem);
+      line-height: 1;
+      pointer-events: none;
+    }
+    .hero-inner { position: relative; z-index: 2; max-width: 66rem; }
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      margin-bottom: 1.2rem;
+      color: var(--cinnabar);
+      font-family: var(--sans);
+      font-size: .85rem;
+      letter-spacing: .18em;
+    }
+    .eyebrow::before { content: ""; width: 3rem; height: 1px; background: currentColor; }
+    h1 {
+      margin: 0;
+      max-width: 10ch;
+      font-size: clamp(3.8rem, 9vw, 8.4rem);
+      font-weight: 800;
+      letter-spacing: -.055em;
+      line-height: .95;
+    }
+    h1 em { color: var(--cinnabar); font-style: normal; }
+    .hero-lead {
+      max-width: 44rem;
+      margin: 2rem 0 2.4rem;
+      font-family: var(--sans);
+      font-size: clamp(1.08rem, 2vw, 1.35rem);
+      color: var(--ink-soft);
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: .8rem; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 3rem;
+      padding: .7rem 1.15rem;
+      border: 1px solid var(--ink);
+      color: var(--paper-light);
+      background: var(--ink);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s, background .2s;
+    }
+    .button:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(30,37,32,.18); }
+    .button.ghost { color: var(--ink); background: transparent; }
+    .button.ghost:hover { color: var(--paper-light); background: var(--cinnabar); border-color: var(--cinnabar); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(8rem, 1fr));
+      max-width: 58rem;
+      margin-top: 4.3rem;
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+    .stat { padding: 1rem 1rem 1rem 0; }
+    .stat + .stat { padding-left: 1rem; border-left: 1px solid var(--rule); }
+    .stat strong { display: block; font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+    .stat span { color: var(--ink-soft); font-family: var(--sans); font-size: .78rem; }
+
+    .chapter {
+      position: relative;
+      max-width: 78rem;
+      margin: 0 auto;
+      padding: 7rem clamp(1.4rem, 6vw, 6rem);
+      border-bottom: 1px solid var(--rule);
+    }
+    .chapter-head { display: grid; grid-template-columns: 5rem 1fr; gap: 1.2rem; margin-bottom: 3rem; }
+    .chapter-no { color: var(--cinnabar); font: 700 2rem/1 var(--mono); }
+    .chapter h2 { margin: 0; font-size: clamp(2.15rem, 4vw, 4rem); line-height: 1.12; letter-spacing: -.035em; }
+    .chapter-deck { max-width: 48rem; margin: .8rem 0 0; color: var(--ink-soft); font-family: var(--sans); font-size: 1.05rem; }
+    h3 { margin: 2.5rem 0 .75rem; font-size: 1.45rem; }
+    p { max-width: 52rem; }
+    .big-idea {
+      display: grid;
+      grid-template-columns: minmax(12rem, .85fr) minmax(18rem, 1.8fr);
+      gap: 2rem;
+      margin: 2rem 0;
+      padding: 2rem;
+      background: var(--paper-light);
+      border: 1px solid var(--rule);
+      box-shadow: var(--shadow);
+    }
+    .analogy {
+      position: relative;
+      padding: 1.4rem;
+      color: var(--paper-light);
+      background: var(--jade);
+      font-family: var(--sans);
+    }
+    .analogy::before { content: "费曼比喻"; display: block; margin-bottom: .55rem; color: #d9c99f; font-size: .72rem; letter-spacing: .2em; }
+    .analogy strong { display: block; margin-bottom: .45rem; font-family: var(--serif); font-size: 1.28rem; }
+    .explain { align-self: center; }
+    .explain p:first-child { margin-top: 0; }
+    .explain p:last-child { margin-bottom: 0; }
+
+    .file-map {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .8rem;
+      margin: 1.6rem 0;
+    }
+    .file-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(250, 245, 233, .7);
+      border: 1px solid var(--rule);
+    }
+    .file-icon { color: var(--cinnabar); font: 700 .75rem/1.3 var(--mono); border: 1px solid currentColor; padding: .38rem; align-self: start; }
+    .file-card code { font: 700 .86rem var(--mono); overflow-wrap: anywhere; }
+    .file-card p { margin: .3rem 0 0; color: var(--ink-soft); font-family: var(--sans); font-size: .85rem; }
+
+    .codebox { position: relative; margin: 1.2rem 0; background: #202722; color: #e7dfcc; border-left: 4px solid var(--cinnabar); box-shadow: var(--shadow); }
+    .code-label { display: flex; justify-content: space-between; align-items: center; padding: .55rem .85rem; color: #aeb7aa; background: #171c18; font: .72rem var(--mono); }
+    .copy {
+      padding: .25rem .55rem;
+      color: #e7dfcc;
+      background: transparent;
+      border: 1px solid #59645b;
+      cursor: pointer;
+    }
+    .copy:hover { border-color: #d9c99f; }
+    pre { margin: 0; padding: 1.15rem; overflow-x: auto; font: .82rem/1.65 var(--mono); white-space: pre; }
+    .kw { color: #e88f76; } .fn { color: #e5c46f; } .st { color: #9fc4a5; } .cm { color: #859388; }
+    code { font-family: var(--mono); }
+    .inline { padding: .12rem .35rem; background: rgba(49,95,82,.1); color: var(--jade); }
+
+    .lab {
+      margin: 2rem 0;
+      padding: clamp(1.2rem, 4vw, 2.2rem);
+      background: #e4d8bf;
+      border: 1px solid rgba(30,37,32,.24);
+      box-shadow: inset 0 0 0 6px rgba(255,255,255,.2);
+    }
+    .lab-kicker { color: var(--cinnabar); font: .75rem var(--mono); letter-spacing: .12em; }
+    .lab h3 { margin-top: .35rem; }
+    .sequence { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1.2rem 0; }
+    .char {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 3rem;
+      aspect-ratio: 1;
+      background: var(--paper-light);
+      border: 1px solid var(--rule);
+      font-size: 1.25rem;
+      transition: .25s;
+    }
+    .char.active { color: var(--paper-light); background: var(--cinnabar); transform: translateY(-5px) rotate(-2deg); box-shadow: 0 7px 12px rgba(116,37,29,.23); }
+    .prediction { min-height: 4.2rem; padding: .9rem 1rem; background: rgba(255,255,255,.42); border-left: 3px solid var(--jade); font-family: var(--sans); }
+    .lab-controls { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; }
+    .mini-button { padding: .5rem .85rem; background: transparent; border: 1px solid var(--ink); cursor: pointer; }
+    .mini-button:hover { color: var(--paper-light); background: var(--ink); }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: .45rem;
+      margin: 2rem 0;
+    }
+    .pipe-step { position: relative; padding: 1rem .8rem; background: var(--paper-light); border: 1px solid var(--rule); text-align: center; }
+    .pipe-step:not(:last-child)::after { content: "→"; position: absolute; right: -.55rem; top: 50%; z-index: 2; color: var(--cinnabar); font-weight: bold; }
+    .pipe-step strong { display: block; margin-bottom: .2rem; }
+    .pipe-step small { color: var(--ink-soft); font-family: var(--sans); }
+
+    .config-grid { display: grid; grid-template-columns: repeat(4, minmax(8rem, 1fr)); gap: .8rem; }
+    label { display: grid; gap: .3rem; color: var(--ink-soft); font-family: var(--sans); font-size: .8rem; }
+    select, input[type="number"] { width: 100%; padding: .6rem; color: var(--ink); background: var(--paper-light); border: 1px solid var(--rule); }
+    .generated-command { margin-top: 1rem; padding: 1rem; color: #e7dfcc; background: #202722; font: .8rem/1.6 var(--mono); overflow-wrap: anywhere; }
+
+    .loss-lab { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: center; }
+    .epoch-dial { text-align: center; }
+    .epoch-number { display: block; color: var(--cinnabar); font: 700 4rem/1 var(--mono); }
+    input[type="range"] { width: 100%; accent-color: var(--cinnabar); }
+    .bars { display: grid; gap: .7rem; }
+    .bar-row { display: grid; grid-template-columns: 5rem 1fr 4rem; align-items: center; gap: .6rem; font-family: var(--sans); font-size: .82rem; }
+    .bar-track { height: .8rem; background: rgba(30,37,32,.12); overflow: hidden; }
+    .bar-fill { height: 100%; width: 70%; background: var(--jade); transition: width .25s; }
+    .bar-fill.val { background: var(--cinnabar); }
+
+    details { margin: .75rem 0; background: rgba(250,245,233,.58); border: 1px solid var(--rule); }
+    summary { padding: .85rem 1rem; cursor: pointer; font-weight: 700; }
+    details > div { padding: 0 1rem 1rem; color: var(--ink-soft); font-family: var(--sans); }
+    .warning { margin: 1.3rem 0; padding: 1rem 1.15rem; background: rgba(168,50,37,.07); border-left: 4px solid var(--cinnabar); }
+    .success { background: rgba(49,95,82,.09); border-left-color: var(--jade); }
+
+    .checklist { display: grid; gap: .55rem; margin: 1.2rem 0; }
+    .check {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: start;
+      gap: .7rem;
+      padding: .75rem;
+      background: rgba(250,245,233,.55);
+      border: 1px solid var(--rule);
+      cursor: pointer;
+    }
+    .check input { margin-top: .42rem; accent-color: var(--jade); }
+    .check:has(input:checked) { opacity: .58; text-decoration: line-through; }
+
+    footer { margin-left: 18rem; padding: 3rem clamp(1.4rem, 6vw, 6rem); color: var(--paper-light); background: var(--ink); }
+    footer p { color: #bbc3b8; font-family: var(--sans); }
+
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    @media (max-width: 980px) {
+      .rail { position: sticky; top: 0; width: 100%; height: auto; padding: .65rem 1rem; border-right: 0; border-bottom: 1px solid var(--rule); }
+      .brand { display: none; }
+      .rail-label, .rail-note { display: none; }
+      .rail nav { display: flex; overflow-x: auto; }
+      .rail nav a { flex: 0 0 auto; border-left: 0; border-bottom: 2px solid transparent; }
+      .rail nav a.active { border-bottom-color: var(--cinnabar); transform: none; }
+      main, footer { margin-left: 0; }
+      .hero { min-height: 78vh; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stat:nth-child(3) { border-left: 0; }
+      .big-idea, .loss-lab { grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: 1fr; }
+      .pipe-step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -.9rem; }
+    }
+    @media (max-width: 640px) {
+      .hero { padding: 4rem 1.2rem; }
+      h1 { font-size: 3.6rem; }
+      .chapter { padding: 5rem 1.15rem; }
+      .chapter-head { grid-template-columns: 1fr; gap: .45rem; }
+      .file-map, .config-grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stat strong { font-size: 1.08rem; }
+      .bar-row { grid-template-columns: 4rem 1fr 3rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" aria-hidden="true"></div>
+  <aside class="rail" aria-label="章节导航">
+    <div class="brand">
+      <div class="seal">铸字<br>成诗</div>
+      <div><strong>RNN 入门志</strong><small>从一字不懂到跑通训练</small></div>
+    </div>
+    <p class="rail-label">学习路线</p>
+    <nav>
+      <a href="#mental"><span>00</span><span>先有一张地图</span></a>
+      <a href="#files"><span>01</span><span>认识仓库文件</span></a>
+      <a href="#prepare"><span>02</span><span>安装与准备</span></a>
+      <a href="#tokens"><span>03</span><span>文字变成数字</span></a>
+      <a href="#batches"><span>04</span><span>制作练习题</span></a>
+      <a href="#model"><span>05</span><span>RNN 如何记忆</span></a>
+      <a href="#training"><span>06</span><span>训练与纠错</span></a>
+      <a href="#validation"><span>07</span><span>考试与存档</span></a>
+      <a href="#generate"><span>08</span><span>让模型写字</span></a>
+      <a href="#trouble"><span>09</span><span>排错与下一步</span></a>
+    </nav>
+    <div class="rail-note">阅读原则：如果不能把一个概念讲给十岁孩子听，就先别急着记术语。每章都先讲比喻，再看代码。</div>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="eyebrow">零基础 · 费曼式 · 对应真实代码</div>
+        <h1>把两千万字，教成一位<em>学徒</em></h1>
+        <p class="hero-lead">你不需要先懂神经网络。我们把训练想成教一个只会逐字接龙的学徒：给他古籍、出题、批改、反复练习，最后让他接着“明月”写下去。</p>
+        <div class="hero-actions">
+          <a class="button" href="#mental">从第一课开始</a>
+          <a class="button ghost" href="#prepare">我只想先跑起来</a>
+        </div>
+        <div class="stats" aria-label="训练语料统计">
+          <div class="stat"><strong>20,082,131</strong><span>训练字符</span></div>
+          <div class="stat"><strong>17,507</strong><span>不同字符</span></div>
+          <div class="stat"><strong>81</strong><span>部／类文献</span></div>
+          <div class="stat"><strong>58.9 MB</strong><span>UTF-8 纯文本</span></div>
+        </div>
+      </div>
+    </header>
+
+    <section class="chapter" id="mental">
+      <div class="chapter-head reveal"><div class="chapter-no">00</div><div><h2>先有一张地图</h2><p class="chapter-deck">训练不是一句神秘咒语，而是一条重复的流水线。先把全局看懂，后面的术语都会各归其位。</p></div></div>
+      <div class="pipeline reveal" aria-label="训练流水线">
+        <div class="pipe-step"><strong>读书</strong><small>input.txt</small></div>
+        <div class="pipe-step"><strong>编号</strong><small>tokenizer</small></div>
+        <div class="pipe-step"><strong>猜下一字</strong><small>RNN / LSTM</small></div>
+        <div class="pipe-step"><strong>批改</strong><small>loss + backward</small></div>
+        <div class="pipe-step"><strong>存档</strong><small>best.pt</small></div>
+      </div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>教孩子接龙</strong>你指着“床前明月”，让孩子猜下一个字。猜“色”，你说错；答案是“光”。孩子稍微调整记忆。几百万次以后，他开始知道“明月”附近常出现什么。</aside>
+        <div class="explain"><p>这个项目做的事情就是：每看见一个字符，预测紧随其后的字符。模型从不直接背诵“唐诗规则”，规则是它在无数次猜测和纠错中自己压缩出来的。</p><p><strong>一句话目标：</strong>让正确的下一个字符获得更高概率，让错误字符获得更低概率。</p></div>
+      </div>
+      <div class="warning success reveal"><strong>先记住：</strong>RNN 是一个家族。普通 RNN、GRU、LSTM 都是“带记忆的逐步阅读器”。项目默认用 LSTM，因为它比普通 RNN 更不容易忘掉较远的上下文；你仍可用 <code class="inline">--model rnn</code> 训练普通 RNN。</div>
+    </section>
+
+    <section class="chapter" id="files">
+      <div class="chapter-head reveal"><div class="chapter-no">01</div><div><h2>认识仓库里的每件工具</h2><p class="chapter-deck">先把文件当成一个小作坊：书库、编号员、学徒、教书先生、档案柜，各有一份代码。</p></div></div>
+      <div class="file-map reveal">
+        <article class="file-card"><span class="file-icon">TXT</span><div><code>data/pre_tang/input.txt</code><p>课本：唐及唐以前约 2,008 万字符。</p></div></article>
+        <article class="file-card"><span class="file-icon">PY</span><div><code>char_rnn/data.py</code><p>编号员：制作字符表、编码并切成练习题。</p></div></article>
+        <article class="file-card"><span class="file-icon">PY</span><div><code>char_rnn/model.py</code><p>学徒的大脑：Embedding、RNN/GRU/LSTM、输出层。</p></div></article>
+        <article class="file-card"><span class="file-icon">PY</span><div><code>train.py</code><p>教书先生：出题、算错多少、纠正参数。</p></div></article>
+        <article class="file-card"><span class="file-icon">PT</span><div><code>checkpoints/best.pt</code><p>最佳存档：验证考试成绩最好的一次。</p></div></article>
+        <article class="file-card"><span class="file-icon">PY</span><div><code>sample.py</code><p>毕业表演：读取存档，按提示逐字生成。</p></div></article>
+        <article class="file-card"><span class="file-icon">MD</span><div><code>data/pre_tang/SOURCES.md</code><p>书目账簿：来源、年代、许可和去重规则。</p></div></article>
+        <article class="file-card"><span class="file-icon">REQ</span><div><code>requirements.txt</code><p>工具清单：PyTorch 与 NumPy 的最低版本。</p></div></article>
+      </div>
+    </section>
+
+    <section class="chapter" id="prepare">
+      <div class="chapter-head reveal"><div class="chapter-no">02</div><div><h2>搭好书桌，再开始读书</h2><p class="chapter-deck">虚拟环境像一张只属于这个项目的书桌。把工具放在这里，不会和电脑上别的 Python 项目混在一起。</p></div></div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>独立的药箱</strong>不同项目需要不同版本的药。虚拟环境是贴了项目名字的独立药箱；<code>requirements.txt</code> 是处方，<code>pip</code> 按处方把药装进去。</aside>
+        <div class="explain"><p>在终端进入仓库根目录，然后依次运行下面的命令。命令行开头不要输入 <code>$</code>；每行执行完再执行下一行。</p></div>
+      </div>
+      <div class="codebox reveal"><div class="code-label"><span>终端｜创建环境并安装依赖</span><button class="copy">复制</button></div><pre><code>cd /Users/luyifeng/Downloads/char-rnn-westlakenlp
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt</code></pre></div>
+      <h3>先确认工具真的装好了</h3>
+      <div class="codebox reveal"><div class="code-label"><span>终端｜环境自检</span><button class="copy">复制</button></div><pre><code>python -c "import torch; print('PyTorch:', torch.__version__); print('MPS:', torch.backends.mps.is_available()); print('CUDA:', torch.cuda.is_available())"</code></pre></div>
+      <p class="warning"><strong>看到什么算成功？</strong>能打印 PyTorch 版本且没有红色报错即可。Mac 的 <code>MPS: True</code> 表示可用 Apple GPU；NVIDIA 机器的 <code>CUDA: True</code> 表示可用 CUDA；两者都是 False 也能用 CPU，只是更慢。</p>
+
+      <h3>让页面替你组装第一条训练命令</h3>
+      <div class="lab reveal" id="configLab">
+        <span class="lab-kicker">INTERACTIVE / 命令生成器</span>
+        <h3>选择配置</h3>
+        <div class="config-grid">
+          <label>模型<select id="cfgModel"><option value="lstm">LSTM（推荐）</option><option value="gru">GRU</option><option value="rnn">普通 RNN</option></select></label>
+          <label>批大小<select id="cfgBatch"><option>8</option><option selected>16</option><option>32</option><option>64</option></select></label>
+          <label>隐藏维度<select id="cfgHidden"><option>64</option><option>128</option><option selected>256</option><option>512</option></select></label>
+          <label>训练轮数<input id="cfgEpochs" type="number" min="1" max="100" value="10"></label>
+        </div>
+        <div class="generated-command" id="generatedCommand" aria-live="polite"></div>
+        <div class="lab-controls" style="margin-top:.8rem"><button class="mini-button" id="copyGenerated">复制这条命令</button></div>
+      </div>
+      <p><strong>零基础推荐：</strong>先用 LSTM、batch 16、hidden 256、10 epochs。若出现内存不足，首先把 batch 改为 8；若只是想确认程序能启动，先设 <code class="inline">--epochs 1 --hidden-size 64</code>。</p>
+    </section>
+
+    <section class="chapter" id="tokens">
+      <div class="chapter-head reveal"><div class="chapter-no">03</div><div><h2>第一关：文字必须先变成数字</h2><p class="chapter-deck">电脑不会直接理解“月”。代码先建立一张字典，让每个 Unicode 字符拥有唯一编号。</p></div></div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>图书馆借书证</strong>图书馆不靠“那本蓝色的书”管理藏书，而给每本书一个编号。字符表也一样：可能把“月”编成 8,421，把“明”编成 7,193。编号本身没有诗意，只为方便计算。</aside>
+        <div class="explain"><p><code>CharacterTokenizer.from_text</code> 用 <code>set(text)</code> 找出所有不同字符，再排序以保证每次编号一致。当前语料约有 17,507 个不同字符，包括汉字、标点和换行。</p></div>
+      </div>
+      <div class="codebox reveal"><div class="code-label"><span>char_rnn/data.py｜第 18–38 行</span><button class="copy">复制</button></div><pre><code><span class="kw">@classmethod</span>
+<span class="kw">def</span> <span class="fn">from_text</span>(cls, text):
+    <span class="kw">return</span> cls(tuple(sorted(set(text))))
+
+<span class="kw">def</span> <span class="fn">encode</span>(self, text):
+    mapping = self.stoi
+    <span class="kw">return</span> torch.tensor(
+        [mapping[character] <span class="kw">for</span> character <span class="kw">in</span> text],
+        dtype=torch.long,
+    )</code></pre></div>
+      <p><strong>Embedding 是什么？</strong>编号只是门牌号，不能表示意义。模型第一个可学习层 <code class="inline">nn.Embedding</code> 会把每个编号换成一串可训练的小数。可以把它想成给每个字发一张“性格卡”：训练后，“山”“水”“云”的卡片会形成对预测有用的模式。</p>
+      <details><summary>为什么这是字符级，而不是词级？</summary><div>代码逐个迭代 Python 字符串，因此“明月”会得到“明”和“月”两个 token，不需要中文分词。优点是不会遇到生词切分问题，也能学习古汉语单字组合；代价是序列更长，模型需要更多步才能理解长距离关系。</div></details>
+      <details><summary>为什么生成提示里不能出现训练集没有的字符？</summary><div>模型的输出口只有字符表里的 17,507 个位置。没见过的字符没有编号、Embedding 和输出概率，因此 <code>encode</code> 会明确报错，而不是悄悄替换。</div></details>
+    </section>
+
+    <section class="chapter" id="batches">
+      <div class="chapter-head reveal"><div class="chapter-no">04</div><div><h2>第二关：把课本裁成练习题</h2><p class="chapter-deck">输入和答案只错开一个字符。模型看到前一个字，目标永远是下一个字。</p></div></div>
+      <div class="lab reveal" id="sequenceLab">
+        <span class="lab-kicker">INTERACTIVE / 下一字练习</span>
+        <h3>逐步看看模型在做哪一道题</h3>
+        <div class="sequence" id="sequence" aria-label="字符序列"></div>
+        <div class="prediction" id="prediction" aria-live="polite"></div>
+        <div class="lab-controls"><button class="mini-button" id="prevChar">上一步</button><button class="mini-button" id="nextChar">下一步</button><button class="mini-button" id="resetChar">重来</button></div>
+      </div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>透明尺遮住答案</strong>老师拿透明尺盖住每行后半截，让学生一次只猜下一个字。序列长度 <code>seq_length=128</code>，就是每张练习卷连续放 128 道接龙题。</aside>
+        <div class="explain"><p>假设原文是“明月松间照”：输入为“明月松间”，答案为“月松间照”。整排向左错开一格，就自动产生了四道监督学习题。</p></div>
+      </div>
+      <div class="codebox reveal"><div class="code-label"><span>char_rnn/data.py｜第 66–75 行</span><button class="copy">复制</button></div><pre><code>inputs  = tokens[:usable].view(batch_size, -1)
+targets = tokens[1:usable + 1].view(batch_size, -1)
+
+self._batches = [
+    (inputs[:, start:start + seq_length],
+     targets[:, start:start + seq_length])
+    <span class="kw">for</span> start <span class="kw">in</span> range(0, inputs.size(1), seq_length)
+]</code></pre></div>
+      <p><strong>batch_size</strong> 是同时批改多少张练习卷。更大通常能更充分利用 GPU，但会占更多内存；它不是“读多少字以后才学习”。每一个 batch 都会进行一次参数更新。</p>
+      <p><strong>train_fraction=0.95</strong> 把大多数练习题用来学习，留下约 5% 当从未参与改答案的模拟考试。</p>
+    </section>
+
+    <section class="chapter" id="model">
+      <div class="chapter-head reveal"><div class="chapter-no">05</div><div><h2>第三关：RNN 带着笔记往前读</h2><p class="chapter-deck">普通网络每次只看眼前；RNN 多带了一张会更新的便签，这张便签就是 hidden state。</p></div></div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>驿站传递密札</strong>每个字符是一座驿站。上一站把一张密札交给下一站，密札记录“目前读到什么语境”。下一站同时看新字和密札，再改写密札继续传递。</aside>
+        <div class="explain"><p>hidden state 不是原文副本，而是一组压缩数字。它可能编码句式、主题、韵律等对下一字有用的信息。LSTM 额外使用门控机制，像决定哪些旧笔记该保留、哪些该擦掉。</p></div>
+      </div>
+      <div class="pipeline reveal">
+        <div class="pipe-step"><strong>字符编号</strong><small>[batch, time]</small></div>
+        <div class="pipe-step"><strong>Embedding</strong><small>性格卡</small></div>
+        <div class="pipe-step"><strong>LSTM</strong><small>更新记忆</small></div>
+        <div class="pipe-step"><strong>Linear</strong><small>17,507 个分数</small></div>
+        <div class="pipe-step"><strong>Softmax</strong><small>下一字概率</small></div>
+      </div>
+      <div class="codebox reveal"><div class="code-label"><span>char_rnn/model.py｜模型结构与 forward</span><button class="copy">复制</button></div><pre><code>self.embedding = nn.Embedding(vocab_size, embedding_dim)
+recurrent_class = {
+    <span class="st">"rnn"</span>: nn.RNN,
+    <span class="st">"gru"</span>: nn.GRU,
+    <span class="st">"lstm"</span>: nn.LSTM,
+}[model_type]
+self.recurrent = recurrent_class(embedding_dim, hidden_size, ...)
+self.output = nn.Linear(hidden_size, vocab_size)
+
+<span class="kw">def</span> <span class="fn">forward</span>(self, tokens, hidden=<span class="kw">None</span>):
+    embedded = self.embedding(tokens)
+    activations, hidden = self.recurrent(embedded, hidden)
+    <span class="kw">return</span> self.output(activations), hidden</code></pre></div>
+      <details><summary>embedding_dim=128 是什么？</summary><div>每个字符的“性格卡”有 128 个可学习数字。更大能容纳更丰富的表示，也会增加参数和计算量。它与 hidden_size 不必相同。</div></details>
+      <details><summary>hidden_size=256 是什么？</summary><div>驿站密札有 256 个数字。越大，记忆容量越高，但训练更慢、占用更多显存，也更容易过拟合。</div></details>
+      <details><summary>num_layers=2 是什么？</summary><div>不是一位学徒，而是两位叠在一起：第一层把读到的模式交给第二层，第二层形成更抽象的上下文。层数超过 1 时，dropout 会在层之间随机遮住部分信号，防止死记硬背。</div></details>
+    </section>
+
+    <section class="chapter" id="training">
+      <div class="chapter-head reveal"><div class="chapter-no">06</div><div><h2>第四关：猜错以后，怎样真正学会</h2><p class="chapter-deck">模型第一次几乎乱猜。学习发生在“算错多少 → 追查责任 → 微调所有旋钮”这三步。</p></div></div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>万旋钮的调音台</strong>模型里有数百万个小旋钮。loss 是刺耳程度；反向传播沿电路倒查每个旋钮对噪声负了多少责任；AdamW 优化器再把每个旋钮轻轻拧向更悦耳的方向。</aside>
+        <div class="explain"><p><code>CrossEntropyLoss</code> 会惩罚模型没有把高概率给正确字符。<code>loss.backward()</code> 计算梯度；<code>optimizer.step()</code> 才真正修改参数。</p></div>
+      </div>
+      <div class="codebox reveal"><div class="code-label"><span>train.py｜第 79–90 行：一次 epoch</span><button class="copy">复制</button></div><pre><code><span class="kw">for</span> inputs, targets <span class="kw">in</span> batches.split(<span class="st">"train"</span>):
+    optimizer.zero_grad(set_to_none=<span class="kw">True</span>) <span class="cm"># 擦掉上题草稿</span>
+    logits, _ = model(inputs.to(device))       <span class="cm"># 作答</span>
+    loss = criterion(logits.reshape(-1, vocab_size),
+                     targets.to(device).reshape(-1))
+    loss.backward()                            <span class="cm"># 追查责任</span>
+    nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+    optimizer.step()                           <span class="cm"># 调整旋钮</span></code></pre></div>
+      <p><strong>epoch</strong> 就是把全部训练练习题完整做一遍。10 epochs = 全书反复练 10 遍。它不是越多越好：训练分数一直进步、模拟考试却退步时，就是开始背答案而没有更好地掌握规律。</p>
+      <p><strong>grad_clip=1.0</strong> 像给方向盘加限位器。RNN 的梯度偶尔会突然极大，裁剪可以避免一次过猛调整把已经学到的东西全部撞坏。</p>
+
+      <div class="lab reveal">
+        <span class="lab-kicker">INTERACTIVE / 仅用于理解的示意数据</span>
+        <h3>拖动训练轮数，观察“练习”和“考试”</h3>
+        <div class="loss-lab">
+          <div class="epoch-dial"><span class="epoch-number" id="epochNumber">1</span><span>epoch</span><input id="epochRange" type="range" min="1" max="30" value="1"></div>
+          <div class="bars">
+            <div class="bar-row"><span>训练 loss</span><div class="bar-track"><div class="bar-fill" id="trainBar"></div></div><strong id="trainLoss">4.50</strong></div>
+            <div class="bar-row"><span>验证 loss</span><div class="bar-track"><div class="bar-fill val" id="valBar"></div></div><strong id="valLoss">4.70</strong></div>
+            <div class="prediction" id="lossAdvice">刚开始，两边都很高：学徒还在乱猜。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="validation">
+      <div class="chapter-head reveal"><div class="chapter-no">07</div><div><h2>第五关：考试不参与改答案</h2><p class="chapter-deck">训练 loss 代表练习册表现，validation loss 代表闭卷考试。真正值得保存的是考试成绩最好的一次。</p></div></div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>练习册与密封试卷</strong>如果学生背下练习册，练习分数会很高，却不一定会做新题。验证集像老师提前密封的试卷：训练时绝不能根据它修改答案。</aside>
+        <div class="explain"><p><code>evaluate</code> 使用 <code>torch.no_grad()</code>，只统计成绩，不计算梯度。每轮结束都会保存 <code>last.pt</code>；只有验证 loss 创新低时才覆盖 <code>best.pt</code>。</p></div>
+      </div>
+      <div class="codebox reveal"><div class="code-label"><span>train.py｜第 91–100 行</span><button class="copy">复制</button></div><pre><code>val_loss = evaluate(model, batches.split(<span class="st">"val"</span>), criterion, device)
+save_checkpoint(output_dir / <span class="st">"last.pt"</span>, model, tokenizer, ...)
+
+<span class="kw">if</span> val_loss &lt; best_loss:
+    best_loss = val_loss
+    save_checkpoint(output_dir / <span class="st">"best.pt"</span>, model, tokenizer, ...)</code></pre></div>
+      <h3>一份 checkpoint 里面装了什么？</h3>
+      <p><code>char_rnn/checkpoints.py</code> 把四类东西装进同一个文件：模型结构配置、已经学到的参数、字符表，以及训练到第几轮和 loss 历史。它像“学徒大脑 + 字典 + 成绩册”的完整冷冻存档。</p>
+      <div class="warning"><strong>看 loss 的方向，不迷信绝对值：</strong>训练 loss 和验证 loss 一起下降通常是好事；训练下降而验证连续上升通常是过拟合；出现 <code>nan</code> 往往意味着数值不稳定，应减小 learning rate。</div>
+    </section>
+
+    <section class="chapter" id="generate">
+      <div class="chapter-head reveal"><div class="chapter-no">08</div><div><h2>毕业表演：让模型逐字续写</h2><p class="chapter-deck">生成不是一次写出整首诗。模型每次只抽一个字，把这个字接回输入，再猜下一个。</p></div></div>
+      <div class="big-idea reveal">
+        <aside class="analogy"><strong>摸球写诗</strong>模型把 17,507 个字符放进抽奖箱，每个字符的球数由概率决定。“月”的球很多就更容易抽到，但不保证每次相同。抽到一个字后，再据此重新装下一箱球。</aside>
+        <div class="explain"><p><code>temperature</code> 调整抽奖箱的冒险程度；<code>top-k</code> 只保留最有希望的若干候选；<code>greedy</code> 则永远选概率最高者。</p></div>
+      </div>
+      <div class="codebox reveal"><div class="code-label"><span>终端｜使用最佳存档生成 300 字</span><button class="copy">复制</button></div><pre><code>python sample.py checkpoints/best.pt \
+  --prompt "明月" \
+  --length 300 \
+  --temperature 0.8 \
+  --top-k 30</code></pre></div>
+      <div class="codebox reveal"><div class="code-label"><span>sample.py｜第 68–75 行：逐字循环</span><button class="copy">复制</button></div><pre><code><span class="kw">for</span> _ <span class="kw">in</span> range(args.length):
+    token = sample_token(current_logits, temperature, top_k, greedy)
+    generated.append(tokenizer.decode([token]))
+    current = torch.tensor([[token]], device=device)
+    logits, hidden = model(current, hidden)
+    current_logits = logits[:, -1, :]</code></pre></div>
+      <div class="file-map reveal">
+        <article class="file-card"><span class="file-icon">0.5</span><div><code>temperature 较低</code><p>更保守、更重复，常选最稳妥字符。</p></div></article>
+        <article class="file-card"><span class="file-icon">1.2</span><div><code>temperature 较高</code><p>更意外，也更容易语无伦次。</p></div></article>
+        <article class="file-card"><span class="file-icon">K</span><div><code>top-k 20–50</code><p>排除极小概率怪字，适合初次试验。</p></div></article>
+        <article class="file-card"><span class="file-icon">MAX</span><div><code>--greedy</code><p>结果可复现，但容易陷入重复循环。</p></div></article>
+      </div>
+    </section>
+
+    <section class="chapter" id="trouble">
+      <div class="chapter-head reveal"><div class="chapter-no">09</div><div><h2>遇到报错时，像侦探一样排查</h2><p class="chapter-deck">错误不是“我不适合训练模型”，只是流水线上某个环节没有接好。先看最后一行报错，再按症状定位。</p></div></div>
+      <details open><summary>ModuleNotFoundError: No module named 'torch'</summary><div>依赖没有装进当前环境，或终端没有激活虚拟环境。运行 <code>source .venv/bin/activate</code>，确认命令行前出现 <code>(.venv)</code>，再运行 <code>pip install -r requirements.txt</code>。</div></details>
+      <details><summary>CUDA out of memory / MPS 内存不足</summary><div>先把 <code>--batch-size 16</code> 改成 8 或 4；仍不足再把 <code>--hidden-size 256</code> 改成 128。batch size 是最直接的显存旋钮。</div></details>
+      <details><summary>训练非常慢，看起来像卡住</summary><div>完整语料约 2,008 万字符，一轮包含很多 batch。先确认终端是否持续输出、活动监视器是否有 CPU/GPU 使用率。第一次可用 <code>--epochs 1 --hidden-size 64 --num-layers 1 --batch-size 8</code> 做通路测试。</div></details>
+      <details><summary>生成时提示字符不在 vocabulary</summary><div>提示词含有训练语料从未出现的字符。换一个常见古汉语提示，或把该字符加入训练数据后重新训练；旧 checkpoint 的字符表不会自动扩大。</div></details>
+      <details><summary>生成结果一直重复</summary><div>不要用 <code>--greedy</code>；尝试 <code>--temperature 0.8 --top-k 30</code>。若仍严重重复，可能训练不足、过拟合或普通 RNN 的记忆能力有限，可改用 LSTM。</div></details>
+      <details><summary>loss 变成 nan</summary><div>把 <code>--learning-rate 3e-3</code> 降到 <code>1e-3</code> 或 <code>3e-4</code>，保持梯度裁剪开启，并检查数据中是否存在异常。</div></details>
+
+      <h3>第一次完整训练检查单</h3>
+      <div class="checklist reveal" id="checklist">
+        <label class="check"><input type="checkbox"><span>终端已经进入仓库根目录。</span></label>
+        <label class="check"><input type="checkbox"><span>已经创建并激活 <code>.venv</code>。</span></label>
+        <label class="check"><input type="checkbox"><span><code>import torch</code> 自检成功。</span></label>
+        <label class="check"><input type="checkbox"><span>先用 1 epoch 小配置确认训练能启动。</span></label>
+        <label class="check"><input type="checkbox"><span>正式训练时观察 train loss 与 val loss。</span></label>
+        <label class="check"><input type="checkbox"><span>训练后使用 <code>checkpoints/best.pt</code> 生成文本。</span></label>
+      </div>
+
+      <h3>你真正需要记住的五句话</h3>
+      <ol>
+        <li>语料是课本，字符表是编号册。</li>
+        <li>输入和答案错开一字，模型永远在猜下一字。</li>
+        <li>hidden state 是读到当前位置时留下的压缩笔记。</li>
+        <li>loss 衡量错得多严重，反向传播负责追查每个参数的责任。</li>
+        <li>训练集用来学习，验证集用来选出真正泛化更好的 <code>best.pt</code>。</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <strong>铸字成诗 · char-rnn 零基础训练指南</strong>
+    <p>本页是独立 HTML，不需要服务器或网络。所有路径、参数和代码均对应当前仓库。打开终端，照着第 02 章执行，你就已经开始训练了。</p>
+  </footer>
+
+  <script>
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+    const copyText = async text => {
+      if (navigator.clipboard?.writeText) {
+        try { await navigator.clipboard.writeText(text); return; } catch (_) { /* file:// may deny clipboard access. */ }
+      }
+      const fallback = document.createElement('textarea');
+      fallback.value = text;
+      fallback.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(fallback);
+      fallback.select();
+      document.execCommand('copy');
+      fallback.remove();
+    };
+
+    // Reading progress and active navigation.
+    const progress = $('.reading-progress');
+    const sections = $$('.chapter');
+    const navLinks = $$('.rail nav a');
+    const updateScroll = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      progress.style.width = `${max > 0 ? (scrollY / max) * 100 : 0}%`;
+      let current = sections[0]?.id;
+      sections.forEach(section => { if (section.getBoundingClientRect().top <= 150) current = section.id; });
+      navLinks.forEach(link => link.classList.toggle('active', link.hash === `#${current}`));
+    };
+    addEventListener('scroll', updateScroll, { passive: true });
+    updateScroll();
+
+    // Reveal content as it enters the viewport.
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+    }, { threshold: .08 });
+    $$('.reveal').forEach(element => observer.observe(element));
+
+    // Copy buttons.
+    $$('.copy').forEach(button => button.addEventListener('click', async () => {
+      const text = button.closest('.codebox').querySelector('pre').innerText;
+      await copyText(text);
+      const old = button.textContent;
+      button.textContent = '已复制';
+      setTimeout(() => button.textContent = old, 1200);
+    }));
+
+    // Sequence / next-character lab.
+    const poem = [...'明月松间照，清泉石上流。'];
+    let charIndex = 0;
+    const sequence = $('#sequence');
+    const prediction = $('#prediction');
+    const renderSequence = () => {
+      sequence.innerHTML = poem.map((char, index) => `<span class="char ${index === charIndex ? 'active' : ''}">${char}</span>`).join('');
+      if (charIndex < poem.length - 1) {
+        prediction.innerHTML = `模型现在读到 <strong>“${poem.slice(0, charIndex + 1).join('')}”</strong>，本题输入是 <strong>“${poem[charIndex]}”</strong>，标准答案（下一个字符）是 <strong>“${poem[charIndex + 1]}”</strong>。`;
+      } else {
+        prediction.innerHTML = '这一小段已经读完。真实训练会接着读取语料中的下一个字符。';
+      }
+    };
+    $('#nextChar').addEventListener('click', () => { charIndex = Math.min(poem.length - 1, charIndex + 1); renderSequence(); });
+    $('#prevChar').addEventListener('click', () => { charIndex = Math.max(0, charIndex - 1); renderSequence(); });
+    $('#resetChar').addEventListener('click', () => { charIndex = 0; renderSequence(); });
+    renderSequence();
+
+    // Config command builder.
+    const configInputs = ['#cfgModel', '#cfgBatch', '#cfgHidden', '#cfgEpochs'].map($);
+    const generated = $('#generatedCommand');
+    const renderCommand = () => {
+      generated.textContent = `python train.py --data data/pre_tang/input.txt --model ${$('#cfgModel').value} --batch-size ${$('#cfgBatch').value} --hidden-size ${$('#cfgHidden').value} --epochs ${$('#cfgEpochs').value} --device auto`;
+    };
+    configInputs.forEach(input => input.addEventListener('input', renderCommand));
+    $('#copyGenerated').addEventListener('click', async event => {
+      await copyText(generated.textContent);
+      event.currentTarget.textContent = '已复制';
+      setTimeout(() => event.currentTarget.textContent = '复制这条命令', 1200);
+    });
+    renderCommand();
+
+    // Feynman-style illustrative loss simulator (explicitly not real training data).
+    const epochRange = $('#epochRange');
+    const renderLoss = () => {
+      const epoch = Number(epochRange.value);
+      const train = Math.max(.72, 4.6 * Math.exp(-epoch / 7) + .62);
+      const overfit = Math.max(0, epoch - 18) * .045;
+      const val = Math.max(1.12, 4.8 * Math.exp(-epoch / 6.2) + .94) + overfit;
+      $('#epochNumber').textContent = epoch;
+      $('#trainLoss').textContent = train.toFixed(2);
+      $('#valLoss').textContent = val.toFixed(2);
+      $('#trainBar').style.width = `${Math.min(100, train / 5 * 100)}%`;
+      $('#valBar').style.width = `${Math.min(100, val / 5 * 100)}%`;
+      const advice = epoch < 5
+        ? '刚开始，两边都很高：学徒还在乱猜。'
+        : epoch < 18
+          ? '练习与考试一起进步：模型正在学习可泛化的规律。'
+          : '训练仍进步，验证却可能回升：这是“背练习册”的过拟合信号。';
+      $('#lossAdvice').textContent = advice;
+    };
+    epochRange.addEventListener('input', renderLoss);
+    renderLoss();
+
+    // Persist the reader's checklist locally.
+    const checks = $$('#checklist input');
+    try {
+      const saved = JSON.parse(localStorage.getItem('rnn-guide-checks') || '[]');
+      checks.forEach((check, index) => check.checked = Boolean(saved[index]));
+      checks.forEach(check => check.addEventListener('change', () => {
+        localStorage.setItem('rnn-guide-checks', JSON.stringify(checks.map(item => item.checked)));
+      }));
+    } catch (_) { /* localStorage may be unavailable for some file:// policies. */ }
+  </script>
+</body>
+</html>

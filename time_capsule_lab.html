@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>唐前时间胶囊实验室</title>
+  <style>
+    :root { --ink:#171916; --paper:#efe7d1; --paper2:#d9cbaa; --line:#87785c; --jade:#0e5048; --cinnabar:#b2382e; --gold:#c89335; --muted:#665f51; }
+    * { box-sizing:border-box; } html { scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:var(--paper); font-family:"Songti SC","Noto Serif CJK SC","STKaiti",serif; line-height:1.75; }
+    body:before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.28; background-image:radial-gradient(#80765e 0.55px,transparent .7px), repeating-linear-gradient(0deg,rgba(91,72,38,.035) 0 1px,transparent 1px 5px); background-size:5px 5px,100% 5px; mix-blend-mode:multiply; }
+    .masthead { min-height:82vh; padding:26px max(5vw,28px) 55px; position:relative; overflow:hidden; color:#f4ecd7; background:linear-gradient(120deg,#102b28 0%,#173b32 47%,#402c20 100%); }
+    .masthead:after { content:""; position:absolute; width:68vw; height:68vw; right:-25vw; top:-30vw; border:1px solid rgba(228,195,119,.44); border-radius:50%; box-shadow:0 0 0 48px rgba(228,195,119,.05),0 0 0 110px rgba(228,195,119,.04),0 0 0 190px rgba(228,195,119,.03); }
+    .stars { position:absolute; inset:0; opacity:.55; background-image:radial-gradient(#e8cf92 1px,transparent 1.5px); background-size:43px 43px; mask-image:linear-gradient(to bottom,black,transparent); }
+    .top { display:flex; justify-content:space-between; align-items:center; position:relative; z-index:2; border-bottom:1px solid rgba(244,236,215,.35); padding-bottom:12px; letter-spacing:.12em; font-size:13px; }
+    .seal { color:#ffdf91; font-family:monospace; letter-spacing:.08em; }
+    h1 { font-weight:500; font-size:clamp(48px,9vw,112px); line-height:.94; letter-spacing:.03em; margin:15vh 0 18px; position:relative; z-index:2; max-width:900px; }
+    .lead { position:relative; z-index:2; max-width:690px; color:#ddd2bc; font-size:clamp(18px,2vw,25px); }
+    .hero-note { position:absolute; z-index:2; bottom:34px; right:max(5vw,28px); font-size:13px; color:#d9c28f; border-left:2px solid var(--cinnabar); padding:7px 0 7px 13px; max-width:290px; }
+    .nav { position:sticky; top:0; z-index:5; display:flex; gap:18px; overflow:auto; padding:12px max(5vw,28px); background:rgba(239,231,209,.94); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); font-size:14px; white-space:nowrap; }
+    .nav a { color:var(--jade); text-decoration:none; }
+    main { max-width:1150px; margin:auto; padding:0 max(5vw,28px) 80px; }
+    section { padding:78px 0 20px; border-bottom:1px solid rgba(135,120,92,.45); }
+    .kicker { color:var(--cinnabar); letter-spacing:.18em; font-family:monospace; font-size:12px; }
+    h2 { font-size:clamp(30px,4.6vw,56px); font-weight:500; line-height:1.15; margin:6px 0 20px; }
+    h3 { font-size:23px; font-weight:600; margin:0 0 10px; }
+    .wide { max-width:760px; font-size:18px; }
+    .warning { margin:27px 0; padding:18px 21px; background:#f5e2bd; border-left:5px solid var(--cinnabar); }
+    .warning strong { color:#852820; }
+    .diagram { display:grid; grid-template-columns:1fr 60px 1fr 60px 1fr; align-items:center; gap:12px; margin:38px 0 8px; }
+    .node { min-height:155px; padding:20px; border:1px solid var(--line); background:#f6efdc; box-shadow:8px 8px 0 rgba(128,107,65,.12); }
+    .node b { display:block; font-size:21px; color:var(--jade); margin-bottom:5px; }.arrow { text-align:center; font-size:32px; color:var(--cinnabar); }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin:32px 0; }
+    .experiment { padding:28px; background:linear-gradient(150deg,#f9f2df,#e7d9b9); border-top:5px solid var(--jade); position:relative; }
+    .experiment:nth-child(2) { border-top-color:var(--cinnabar); }
+    .badge { display:inline-block; padding:2px 9px; border:1px solid currentColor; color:var(--cinnabar); font-family:monospace; font-size:12px; letter-spacing:.08em; }
+    .equation { margin:25px 0; background:#19221f; color:#efe5cc; padding:23px; overflow:auto; font-family:"SFMono-Regular",Consolas,monospace; font-size:15px; }
+    .equation em { color:#e7bd60; font-style:normal; }.small { color:var(--muted); font-size:14px; }
+    .timeline { position:relative; margin:35px 0; padding:7px 0 0; display:grid; grid-template-columns:repeat(5,1fr); gap:0; }
+    .timeline:before { content:""; position:absolute; top:18px; left:0; right:0; height:2px; background:var(--line); }.era { position:relative; padding:30px 12px 9px 0; font-size:14px; }.era:before { content:""; position:absolute; top:11px; width:15px; height:15px; border-radius:50%; background:var(--paper); border:3px solid var(--jade); }.era.future:before { border-color:var(--cinnabar); }.era span { display:block; color:var(--cinnabar); font-size:12px; font-family:monospace; }
+    .steps { counter-reset:step; display:grid; grid-template-columns:repeat(2,1fr); gap:15px; margin:25px 0; }.step { position:relative; padding:22px 18px 18px 70px; min-height:125px; border:1px solid var(--line); background:rgba(255,250,238,.45); }.step:before { counter-increment:step; content:counter(step, decimal-leading-zero); position:absolute; left:17px; top:18px; color:var(--cinnabar); font-family:monospace; font-size:18px; }.step b { font-size:18px; }
+    pre { white-space:pre-wrap; word-break:break-word; margin:14px 0 4px; padding:20px; background:#1c2925; color:#f5ebd3; font:13px/1.65 "SFMono-Regular",Consolas,monospace; border-left:4px solid var(--gold); }
+    .codebox { position:relative; margin:20px 0; }.copy { position:absolute; right:10px; top:9px; padding:5px 9px; border:1px solid #d2c197; color:#d2c197; background:transparent; cursor:pointer; font:12px monospace; }.copy:hover { background:#d2c197; color:#1c2925; }
+    table { width:100%; border-collapse:collapse; background:#f9f2e1; margin:22px 0; } th,td { padding:13px 14px; text-align:left; border-bottom:1px solid #b9ab8d; vertical-align:top; } th { color:#eee1c5; background:#24453d; font-weight:500; } td:first-child { color:var(--cinnabar); font-weight:600; }
+    .prompt-gallery { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:24px 0; }.prompt { padding:18px; border:1px solid var(--line); background:rgba(255,249,235,.5); }.prompt q { display:block; font-size:21px; line-height:1.5; color:var(--jade); }.prompt span { display:block; margin-top:14px; font:12px monospace; color:var(--cinnabar); }
+    .checklist { padding:30px; background:var(--ink); color:#f2e8d2; margin-top:30px; }.checklist label { display:block; padding:11px 0; border-bottom:1px solid rgba(242,232,210,.17); cursor:pointer; }.checklist input { accent-color:var(--gold); margin-right:10px; }.checklist input:checked + span { text-decoration:line-through; opacity:.58; }
+    .closing { margin:55px 0 0; padding:35px 5vw; text-align:center; background:var(--jade); color:#f3ead4; font-size:clamp(22px,3vw,35px); line-height:1.5; }.closing strong { color:#f4c86a; font-weight:500; }
+    footer { padding:28px 5vw; color:var(--muted); font-size:13px; text-align:center; }
+    @media(max-width:760px) { .masthead { min-height:73vh; }.hero-note { left:28px; right:auto; }.diagram { grid-template-columns:1fr; }.arrow { transform:rotate(90deg); }.two,.steps,.prompt-gallery { grid-template-columns:1fr; }.timeline { grid-template-columns:1fr; padding-left:28px; }.timeline:before { top:0; bottom:0; left:7px; width:2px; height:auto; }.era { padding:0 0 22px; }.era:before { left:-28px; top:5px; }.nav { gap:13px; } }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="stars"></div>
+    <div class="top"><span>WESTLAKE NLP / FIELD NOTE 02</span><span class="seal">唐前 · 时间胶囊</span></div>
+    <h1>让一个不知<br>唐后世界的模型，<br>说出它的惊奇。</h1>
+    <p class="lead">两个小实验：用“惊奇度”测量语言断裂；用“古文续写器”观察唐前语感如何面对陌生概念。</p>
+    <div class="hero-note">这不是预言机器。它是一面有年代边界的镜子。</div>
+  </header>
+  <nav class="nav">
+    <a href="#idea">实验边界</a><a href="#surprise">01 惊奇度</a><a href="#continuation">02 续写器</a><a href="#build">实施路线</a><a href="#ethics">解释纪律</a>
+  </nav>
+  <main>
+    <section id="idea">
+      <div class="kicker">FIRST, A CLEAR CLAIM</div>
+      <h2>我们要测量的，不是未来；<br>而是唐前语言世界的边界。</h2>
+      <p class="wide">当前模型只见过唐代及以前的古籍。它学的是“前文出现以后，下一个字符通常是什么”的规律。因此，它可作为一个受限的语言实验对象：当它遇到唐后表达或现代概念时，究竟有多不习惯？它会用哪些唐前句式去续接？</p>
+      <div class="warning"><strong>请把结论说窄。</strong> 高惊奇度并不证明某件事“历史上不可预测”，更不证明模型理解历史因果。它只表示：对于这个唐前语料训练出的字符模型，这段表达在语言形式和字符搭配上不常见。</div>
+      <div class="diagram">
+        <div class="node"><b>唐前语料</b>经、史、子、集、医学、算书与唐诗。模型只从这里学习字与字的关联。</div><div class="arrow">→</div>
+        <div class="node"><b>字符级 LSTM</b>读入前文，给每个候选字符分配下一个字的概率。</div><div class="arrow">→</div>
+        <div class="node"><b>两种观察</b>一是“这段文字有多意外”；二是“从此开头会续出什么”。</div>
+      </div>
+    </section>
+
+    <section id="surprise">
+      <div class="kicker">EXPERIMENT 01 / SURPRISE MAP</div>
+      <h2>唐前惊奇度实验</h2>
+      <div class="two">
+        <article class="experiment"><span class="badge">问题</span><h3>它觉得哪一种表达最陌生？</h3><p>将长度相近的文本片段逐字送入已经训练好的 <code>best.pt</code>。每当模型实际看到一个字，就记录它之前给该字的概率。</p><p>若模型原本认为“下一个字最可能是之、曰、者”，实际却出现了一个它极少在此语境见到的字，惊奇度就升高。</p></article>
+        <article class="experiment"><span class="badge">产物</span><h3>一张“语言断裂地图”</h3><p>把片段按时代或主题分组，比较平均惊奇度：唐前、宋元、明清、近现代；或制度、科技、战争、日常生活等主题。</p><p>图上的峰值是“模型语言预期最失效”的地方，值得回到原文细读。</p></article>
+      </div>
+      <div class="equation"><em>惊奇度（每字符）</em> = 平均值 [ − log P（实际出现的下一个字 ｜ 前文） ]<br><br>低：模型常能预料这个字。　高：这个字或这种组合令模型意外。<br><span class="small">只在同一模型、同一清洗规则、相近长度的文本之间比较。</span></div>
+      <div class="timeline">
+        <div class="era"><span>训练边界</span>先秦—唐</div><div class="era future"><span>待测</span>宋元</div><div class="era future"><span>待测</span>明清</div><div class="era future"><span>待测</span>近代</div><div class="era future"><span>待测</span>现代</div>
+      </div>
+      <h3>实验步骤</h3>
+      <div class="steps">
+        <div class="step"><b>准备对照文本</b><br>每组至少 20 段，尽量每段 150–300 字。保留来源、年代、体裁和主题。</div>
+        <div class="step"><b>统一清洗规则</b><br>全部转成 UTF-8；压缩连续空白；不要悄悄删掉“不像古文”的字。</div>
+        <div class="step"><b>报告覆盖率</b><br>当前模型没有 <code>&lt;unk&gt;</code>（未知字）机制。测试字不在字符表中时，必须统计并单列，不能假装模型评过它。</div>
+        <div class="step"><b>计算并分组</b><br>记录平均惊奇度、困惑度、可评分字符比例；再按时代/主题求均值，而非只挑一个耸动例子。</div>
+      </div>
+      <table><thead><tr><th>你可以比较什么</th><th>好的设计</th><th>不能得出的结论</th></tr></thead><tbody>
+        <tr><td>时代</td><td>同体裁短文：唐、宋、明、近代各 20 段</td><td>“模型证明宋代不可预测”</td></tr>
+        <tr><td>概念</td><td>用相近文体比较交通、政制、通信的描述</td><td>“高分概念是人类绝对无法想象的”</td></tr>
+        <tr><td>文本风格</td><td>史书、诗歌、论说文各自内部比较</td><td>把诗歌与白话新闻的分数直接等同</td></tr>
+      </tbody></table>
+    </section>
+
+    <section id="continuation">
+      <div class="kicker">EXPERIMENT 02 / CONTINUATION DESK</div>
+      <h2>古文续写器</h2>
+      <p class="wide">它的工作很简单：给出开头，LSTM 逐字预测后文。它不会“查资料”或“理解真相”，但能暴露它从唐前语料吸收的常见句式、官职词、史书节奏与诗文搭配。</p>
+      <div class="prompt-gallery">
+        <div class="prompt"><q>子曰</q><span>观察：伦理、修身类搭配</span></div>
+        <div class="prompt"><q>臣闻天下之势</q><span>观察：论说与政论节奏</span></div>
+        <div class="prompt"><q>若有飞车日行千里</q><span>观察：古典语感如何包裹陌生物</span></div>
+      </div>
+      <h3>生成命令：先用最佳模型</h3>
+      <div class="codebox"><button class="copy" data-copy="sample">复制</button><pre id="sample">python sample.py checkpoints/full/best.pt \
+  --prompt "臣闻天下之势" \
+  --length 240 \
+  --temperature 0.7 \
+  --top-k 30 \
+  --device cuda</pre></div>
+      <table><thead><tr><th>参数</th><th>作用</th><th>本实验建议</th></tr></thead><tbody>
+        <tr><td>prompt</td><td>让模型先读的开头</td><td>每次只改开头，方便比较</td></tr>
+        <tr><td>length</td><td>续写的字符数</td><td>150–300，太长更容易跑题</td></tr>
+        <tr><td>temperature</td><td>随机性；越高越冒险</td><td>0.6–0.8</td></tr>
+        <tr><td>top-k</td><td>只从最可能的 k 个字中抽取</td><td>20–40，减少罕见乱码</td></tr>
+      </tbody></table>
+      <p class="warning"><strong>生成结果应标注“模型续写，非古籍原文”。</strong> 不要把它当作史料引用、古文翻译、古人观点或可靠答案。把它当作一个有趣的语料镜像。</p>
+    </section>
+
+    <section id="build">
+      <div class="kicker">IMPLEMENTATION / AFTER EPOCH 10</div>
+      <h2>从已训练模型到实验的实施路线</h2>
+      <p class="wide">训练尚未结束时不要动 <code>checkpoints/full/</code>。等监控显示进程结束后，确认 <code>best.pt</code> 存在，再开始实验。续写器可以立即运行；惊奇度评分器需要新增一个只读 checkpoint 的小脚本。</p>
+      <div class="steps">
+        <div class="step"><b>锁定实验版本</b><br>复制并记录 <code>best.pt</code> 的文件名、训练参数、语料版本与最终验证损失。</div>
+        <div class="step"><b>先做三组小样本</b><br>唐前、唐后、现代各 20 段；先验证评分器与字符覆盖率，再扩大数据集。</div>
+        <div class="step"><b>实现评分器</b><br>读取 checkpoint、编码字符、逐字取实际目标字的 log probability，输出 CSV。</div>
+        <div class="step"><b>审阅与展示</b><br>画分布图、列出高惊奇片段、人工检查上下文，再写出有边界的结论。</div>
+      </div>
+      <h3>将来评分器的命令目标</h3>
+      <div class="codebox"><button class="copy" data-copy="score">复制</button><pre id="score"># 这个脚本将在训练结束后新增
+python score_surprise.py \
+  --checkpoint checkpoints/full/best.pt \
+  --input experiments/modern_transport.txt \
+  --output results/modern_transport.csv \
+  --device cuda</pre></div>
+      <p class="small">输出应至少包含：片段 ID、原始字符数、可评分字符数、未知字符数、平均负对数概率、困惑度、最高惊奇位置。这样别人才可以复查你的结论。</p>
+      <div class="checklist">
+        <h3>开始实验前检查</h3>
+        <label><input type="checkbox"><span>正式训练已结束，且 <code>checkpoints/full/best.pt</code> 存在。</span></label>
+        <label><input type="checkbox"><span>测试文本的来源、年代、主题与清洗规则已记录。</span></label>
+        <label><input type="checkbox"><span>未知字符比例会公开报告，而非静默删除。</span></label>
+        <label><input type="checkbox"><span>续写输出会明确标为“模型生成”，不会冒充古籍。</span></label>
+      </div>
+    </section>
+
+    <section id="ethics">
+      <div class="kicker">THE DISCIPLINE OF INTERPRETATION</div>
+      <h2>一条好的结论，应该长这样。</h2>
+      <div class="warning">“在本实验使用的唐前语料、字符级 LSTM 和统一清洗条件下，某类唐后文本的平均字符惊奇度较高。这说明该模型的<strong>语言预期</strong>对这类表达适配较差；它不构成对历史必然性、人物思想或技术可预测性的证明。”</div>
+      <p class="wide">这条限制不是扫兴，恰恰让实验变得有意思：我们不是把模型神化成先知，而是用它具体地看见一种语料传统的惯性、盲区与想象力。</p>
+      <div class="closing">第一个问题不该是“它预言了什么？”<br>而应是：<strong>“它在哪个字开始感到陌生？”</strong></div>
+    </section>
+  </main>
+  <footer>唐前时间胶囊实验室 · 离线说明页 · 与当前 char-rnn 项目配套使用</footer>
+  <script>
+    document.querySelectorAll('.copy').forEach(button => button.addEventListener('click', async () => {
+      const text = document.getElementById(button.dataset.copy).innerText;
+      try { await navigator.clipboard.writeText(text); button.textContent = '已复制'; setTimeout(() => button.textContent = '复制', 1300); }
+      catch { button.textContent = '请手动复制'; }
+    }));
+  </script>
+</body>
+</html>
